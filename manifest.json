@@ -1,0 +1,52 @@
+{
+  "name": "YashasLearns — NIOS Class 10",
+  "short_name": "YashasLearns",
+  "description": "NIOS Secondary exam prep for Yashas — Science, Home Science, English, Sanskrit, Painting. Study anywhere, anytime.",
+  "start_url": "https://yashaslearns.com/",
+  "scope": "https://yashaslearns.com/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0E0F13",
+  "theme_color": "#4A9EFF",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Science",
+      "short_name": "Science",
+      "description": "Jump to Science practice",
+      "url": "https://yashaslearns.com/?sub=sci",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "English",
+      "short_name": "English",
+      "description": "Jump to English practice",
+      "url": "https://yashaslearns.com/?sub=eng",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

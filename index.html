@@ -629,7 +629,7 @@ p1:[
   // PYQ: Apr2024 OS Q2 — derived SI force
   {q:"The derived SI unit of force is: [PYQ Apr2024]",opts:["kg m s⁻²","kg m⁻¹s⁻²","kg m⁻¹s⁻¹","kg m⁻²s⁻²"],ans:0,m:1},
   // PYQ: Apr2024 OS Q3 — unit expression
-  {q:"7.0 × 10⁻¹⁸ m can also be expressed as: [PYQ Apr2024]",opts:["7.0 Em","7.0 Pm","7.0 am","7.0 fm"],ans:3,m:1},
+  {q:"7.0 × 10⁻¹⁸ m can also be expressed as: [PYQ Apr2024]",opts:["7.0 Em","7.0 Pm","7.0 am","7.0 fm"],ans:2,m:1},
   // PYQ: Apr2024 AS Q2 — derived SI stress
   {q:"The derived SI unit of stress is: [PYQ Apr2024]",opts:["kg ms⁻²","kg m⁻¹s⁻²","kg m⁻²s⁻²","kg m⁻³s⁻²"],ans:1,m:1},
   // PYQ: May2025 Q — slope v-t graph
@@ -2902,8 +2902,12 @@ document.addEventListener('DOMContentLoaded', initExamModal);
 
 
 <script>
-// ═══ Service Worker Registration (offline support) ═══
-if ('serviceWorker' in navigator) {
+// ═══ YashasLearns — Service Worker Registration ═══
+// Only registers on yashaslearns.com — silent on Claude preview, localhost, etc.
+if ('serviceWorker' in navigator && (
+    window.location.hostname === 'yashaslearns.com' ||
+    window.location.hostname === 'www.yashaslearns.com'
+)) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .then(reg => {

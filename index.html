@@ -329,6 +329,7 @@ select.li option{background:#001428;}
     <div id="signout-name" style="font-size:0.85rem;color:#fff;font-weight:600;margin-bottom:4px;"></div>
     <div id="signout-email" style="font-size:0.72rem;color:rgba(255,255,255,0.35);word-break:break-all;"></div>
   </div>
+  <button id="admin-dropdown-btn" onclick="showAdminPanel()" style="display:none;width:100%;padding:10px 12px;background:rgba(200,168,75,0.1);color:#C8A84B;border:1px solid rgba(200,168,75,0.2);border-radius:8px;cursor:pointer;font-family:'Sora',sans-serif;font-size:0.82rem;font-weight:600;margin-bottom:6px;">👑 Admin Dashboard</button>
   <button onclick="signOut()" style="width:100%;padding:10px 12px;background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2);border-radius:8px;cursor:pointer;font-family:'Sora',sans-serif;font-size:0.82rem;font-weight:600;">Sign out</button>
 </div>
 
@@ -3105,7 +3106,10 @@ function updateUIForUser(user) {
     if (soEmail) soEmail.textContent = user.email || '';
 
     // Show admin link if admin
-    if (ADMIN_UIDS.includes(user.uid)) showAdminLink();
+    if (ADMIN_UIDS.includes(user.uid)) {
+      // Small delay to ensure nav is rendered
+      setTimeout(showAdminLink, 300);
+    }
   } else {
     // Guest
     badge.style.display = 'none';
@@ -3194,16 +3198,21 @@ async function loadProgressFromFirestore(uid) {
 // ═══════════════════════════════════════════════════
 
 function showAdminLink() {
-  // Add Admin tab to navigation if not already there
-  const nav = document.querySelector('.btm-nav') || document.querySelector('.nav-tabs');
-  if (nav && !document.getElementById('admin-nav-btn')) {
-    const btn = document.createElement('button');
-    btn.id        = 'admin-nav-btn';
-    btn.className = 'btn';
-    btn.textContent = '👑 Admin';
-    btn.onclick = () => showAdminPanel();
-    nav.appendChild(btn);
-  }
+  // Show admin button in the user dropdown menu
+  const dropBtn = document.getElementById('admin-dropdown-btn');
+  if (dropBtn) dropBtn.style.display = 'block';
+
+  // Also add to navbar if not already there
+  if (document.getElementById('admin-nav-btn')) return;
+  const navItems = document.querySelector('.ni');
+  if (!navItems) return;
+  const btn = document.createElement('button');
+  btn.id        = 'admin-nav-btn';
+  btn.className = 'nb';
+  btn.innerHTML = '👑 Admin';
+  btn.style.cssText = 'color:#C8A84B;border:1px solid rgba(200,168,75,0.3);background:rgba(200,168,75,0.08);';
+  btn.onclick   = () => showAdminPanel();
+  navItems.appendChild(btn);
 }
 
 async function showAdminPanel() {

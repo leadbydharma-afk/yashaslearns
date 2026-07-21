@@ -275,9 +275,16 @@ select.li option{background:#001428;}
 <!-- HOME PAGE -->
 <div id="page-home" class="page active">
 <div class="pi">
+  <!-- User badge bar -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px;position:relative;">
+    <div id="user-badge" onclick="toggleSignoutMenu()" style="display:none;">
+      <div id="user-avatar"></div>
+      <span id="user-name-short"></span>
+    </div>
+  </div>
   <div class="hero">
     <div class="hg">Good morning, champion 👋</div>
-    <h1 class="ht">Welcome back, <span class="hn">Yashas</span>.</h1>
+    <h1 class="ht">Welcome back, <span class="hn" id="hero-name">there</span>.</h1>
     <p class="hs2">Your NIOS Secondary board exam portal — real question papers, chapter summaries, PYQ analysis and the Volvo World. Target: 90%+.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn bp" onclick="gp('study')">▶ Today's Papers</button>
@@ -2900,6 +2907,322 @@ function initExamModal() {
 document.addEventListener('DOMContentLoaded', initExamModal);
 </script>
 
+
+<script>
+// ═══════════════════════════════════════════════════
+// YashasLearns — Firebase Multi-User System
+// Site: https://yashaslearns.com
+// ═══════════════════════════════════════════════════
+
+// ─── Firebase Config ───
+const firebaseConfig = {
+  apiKey: "AIzaSyBiz9XFew58qCNzOd_WklpxxxLm_HPjouc",
+  authDomain: "yashaslearns.firebaseapp.com",
+  projectId: "yashaslearns",
+  storageBucket: "yashaslearns.firebasestorage.app",
+  messagingSenderId: "512468416484",
+  appId: "1:512468416484:web:652c5f8c061e88783ab9f1"
+};
+
+// ─── Initialize Firebase ───
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ─── Admin UIDs (add your Google UID here after first sign-in) ───
+// To find your UID: sign in → open browser console → type: firebase.auth().currentUser.uid
+const ADMIN_UIDS = [];
+
+// ─── State ───
+let currentUser  = null;
+let isGuest      = false;
+let saveDebounce = null;
+
+// ═══════════════════════════════════════════════════
+// AUTH FUNCTIONS
+// ═══════════════════════════════════════════════════
+
+function signInWithGoogle() {
+  const errEl  = document.getElementById('auth-error');
+  const loadEl = document.getElementById('auth-loading');
+  errEl.style.display  = 'none';
+  loadEl.style.display = 'block';
+  document.getElementById('google-signin-btn').disabled = true;
+
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .catch(err => {
+      loadEl.style.display = 'none';
+      document.getElementById('google-signin-btn').disabled = false;
+      errEl.textContent = err.code === 'auth/popup-closed-by-user'
+        ? 'Sign-in cancelled. Try again.'
+        : 'Sign-in failed: ' + err.message;
+      errEl.style.display = 'block';
+    });
+}
+
+function continueAsGuest() {
+  isGuest = true;
+  document.getElementById('auth-overlay').classList.add('hidden');
+  updateUIForUser(null);
+}
+
+function signOut() {
+  auth.signOut().then(() => {
+    currentUser = null;
+    isGuest     = false;
+    document.getElementById('signout-menu').classList.remove('open');
+    document.getElementById('auth-overlay').classList.remove('hidden');
+    document.getElementById('user-badge').style.display = 'none';
+    // Reset hero name
+    const hn = document.getElementById('hero-name');
+    if (hn) hn.textContent = 'there';
+  });
+}
+
+function toggleSignoutMenu() {
+  document.getElementById('signout-menu').classList.toggle('open');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  const menu  = document.getElementById('signout-menu');
+  const badge = document.getElementById('user-badge');
+  if (menu && badge && !menu.contains(e.target) && !badge.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+
+// ═══════════════════════════════════════════════════
+// AUTH STATE LISTENER — runs on every page load
+// ═══════════════════════════════════════════════════
+
+auth.onAuthStateChanged(async user => {
+  const loadEl = document.getElementById('auth-loading');
+  if (loadEl) loadEl.style.display = 'none';
+
+  if (user) {
+    currentUser = user;
+    isGuest     = false;
+    document.getElementById('auth-overlay').classList.add('hidden');
+    updateUIForUser(user);
+    await ensureUserDoc(user);
+    await loadProgressFromFirestore(user.uid);
+  } else if (!isGuest) {
+    // Not signed in and not guest — show overlay
+    document.getElementById('auth-overlay').classList.remove('hidden');
+  }
+});
+
+// ─── Update UI after sign-in ───
+function updateUIForUser(user) {
+  const badge    = document.getElementById('user-badge');
+  const avatar   = document.getElementById('user-avatar');
+  const nameShrt = document.getElementById('user-name-short');
+  const heroName = document.getElementById('hero-name');
+  const soName   = document.getElementById('signout-name');
+  const soEmail  = document.getElementById('signout-email');
+
+  if (user) {
+    // Show badge
+    badge.style.display = 'flex';
+
+    // Avatar: photo or initials
+    const firstName = (user.displayName || 'Student').split(' ')[0];
+    if (user.photoURL) {
+      avatar.innerHTML = '<img src="' + user.photoURL + '" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">';
+    } else {
+      avatar.textContent = firstName.charAt(0).toUpperCase();
+    }
+    nameShrt.textContent = firstName;
+
+    // Hero greeting
+    if (heroName) heroName.textContent = firstName;
+
+    // Sign-out menu info
+    if (soName)  soName.textContent  = user.displayName || 'Student';
+    if (soEmail) soEmail.textContent = user.email || '';
+
+    // Show admin link if admin
+    if (ADMIN_UIDS.includes(user.uid)) showAdminLink();
+  } else {
+    // Guest
+    badge.style.display = 'none';
+    if (heroName) heroName.textContent = 'there';
+  }
+}
+
+// ─── Create user document on first sign-in ───
+async function ensureUserDoc(user) {
+  try {
+    const ref = db.collection('users').doc(user.uid);
+    const doc = await ref.get();
+    if (!doc.exists) {
+      await ref.set({
+        displayName : user.displayName || 'Student',
+        email       : user.email || '',
+        photoURL    : user.photoURL || '',
+        joinedAt    : firebase.firestore.FieldValue.serverTimestamp(),
+        lastSeen    : firebase.firestore.FieldValue.serverTimestamp(),
+        totalQ      : 0,
+        streak      : 0,
+        subjects    : ['sci','hs','eng','san','paint']
+      });
+    } else {
+      // Update last seen
+      await ref.update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
+    }
+  } catch(e) {
+    console.warn('[YashasLearns] Could not create user doc:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PROGRESS — SAVE TO FIRESTORE
+// ═══════════════════════════════════════════════════
+
+// Called whenever a paper is submitted (hook into existing submitPaper function)
+function saveProgressToFirestore(chapterId, paper, score, total, answers) {
+  if (!currentUser) return; // Guest — don't save
+
+  const data = {
+    score      : score,
+    total      : total,
+    pct        : Math.round((score / total) * 100),
+    answers    : answers,
+    ts         : firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  db.collection('users')
+    .doc(currentUser.uid)
+    .collection('progress')
+    .doc(chapterId + '_p' + paper)
+    .set(data)
+    .catch(e => console.warn('[YashasLearns] Save failed:', e.message));
+
+  // Update totals on user doc
+  db.collection('users').doc(currentUser.uid)
+    .update({ totalQ: firebase.firestore.FieldValue.increment(total) })
+    .catch(() => {});
+}
+
+// Load all progress from Firestore and restore into the UI
+async function loadProgressFromFirestore(uid) {
+  try {
+    const snap = await db.collection('users').doc(uid).collection('progress').get();
+    snap.forEach(doc => {
+      const id   = doc.id;   // e.g. "sc1_p1"
+      const data = doc.data();
+      // Mark chapter/paper as done in localStorage so existing UI picks it up
+      const key = 'ylp_' + id;
+      localStorage.setItem(key, JSON.stringify({
+        score: data.score,
+        total: data.total,
+        pct  : data.pct
+      }));
+    });
+    // Refresh progress display if function exists
+    if (typeof refreshProgress === 'function') refreshProgress();
+  } catch(e) {
+    console.warn('[YashasLearns] Load progress failed:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// ADMIN PANEL
+// ═══════════════════════════════════════════════════
+
+function showAdminLink() {
+  // Add Admin tab to navigation if not already there
+  const nav = document.querySelector('.btm-nav') || document.querySelector('.nav-tabs');
+  if (nav && !document.getElementById('admin-nav-btn')) {
+    const btn = document.createElement('button');
+    btn.id        = 'admin-nav-btn';
+    btn.className = 'btn';
+    btn.textContent = '👑 Admin';
+    btn.onclick = () => showAdminPanel();
+    nav.appendChild(btn);
+  }
+}
+
+async function showAdminPanel() {
+  if (!currentUser || !ADMIN_UIDS.includes(currentUser.uid)) return;
+
+  // Load all users from Firestore
+  try {
+    const snap = await db.collection('users').orderBy('lastSeen', 'desc').get();
+    const users = [];
+    snap.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
+
+    // Build admin UI
+    let tableRows = users.map(u => {
+      const joined  = u.joinedAt ? new Date(u.joinedAt.toMillis()).toLocaleDateString('en-IN') : '-';
+      const lastSeen = u.lastSeen ? new Date(u.lastSeen.toMillis()).toLocaleDateString('en-IN') : '-';
+      return '<tr>' +
+        '<td>' + (u.displayName || '-') + '</td>' +
+        '<td style="font-size:0.75rem;opacity:0.6">' + (u.email || '-') + '</td>' +
+        '<td>' + joined + '</td>' +
+        '<td>' + lastSeen + '</td>' +
+        '<td><strong>' + (u.totalQ || 0) + '</strong></td>' +
+        '</tr>';
+    }).join('');
+
+    const adminHTML = '<div style="padding:20px;">' +
+      '<h2 style="color:#4A9EFF;margin-bottom:16px;">👑 Admin Dashboard — ' + users.length + ' students</h2>' +
+      '<input class="admin-search" placeholder="Search students..." oninput="filterAdminTable(this.value)">' +
+      '<div style="overflow-x:auto;"><table class="admin-table" id="admin-table">' +
+      '<thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Last Seen</th><th>Questions Done</th></tr></thead>' +
+      '<tbody>' + tableRows + '</tbody>' +
+      '</table></div>' +
+      '</div>';
+
+    // Show in a modal
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:#0E0F13;z-index:99998;overflow-y:auto;';
+    modal.innerHTML = '<button onclick="this.parentElement.remove()" style="position:sticky;top:16px;float:right;margin:16px;padding:8px 16px;background:rgba(248,113,113,0.2);color:#f87171;border:1px solid rgba(248,113,113,0.3);border-radius:8px;cursor:pointer;font-family:Sora,sans-serif;">✕ Close</button>' + adminHTML;
+    document.body.appendChild(modal);
+
+  } catch(e) {
+    alert('Admin load failed: ' + e.message);
+  }
+}
+
+function filterAdminTable(query) {
+  const rows = document.querySelectorAll('#admin-table tbody tr');
+  query = query.toLowerCase();
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// HOOK INTO EXISTING SUBMIT FUNCTION
+// Wrap the existing submitPaper to also save to Firestore
+// ═══════════════════════════════════════════════════
+
+// This runs after the page scripts load
+window.addEventListener('load', () => {
+  // Intercept paper submissions to save to Firestore
+  const origSubmit = window.submitPaper;
+  if (typeof origSubmit === 'function') {
+    window.submitPaper = function() {
+      origSubmit();
+      // After submit, save to Firestore
+      setTimeout(() => {
+        if (currentUser && window.curCh && window.curP !== undefined) {
+          const scoreEl = document.querySelector('.score-val');
+          const totalEl = document.querySelector('.score-tot');
+          if (scoreEl && totalEl) {
+            const score = parseInt(scoreEl.textContent) || 0;
+            const total = parseInt(totalEl.textContent) || 0;
+            saveProgressToFirestore(window.curCh, window.curP, score, total, window.uAns || {});
+          }
+        }
+      }, 500);
+    };
+  }
+});
+</script>
 
 <script>
 // ═══ YashasLearns — Service Worker Registration ═══

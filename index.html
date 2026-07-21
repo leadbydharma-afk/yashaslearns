@@ -257,6 +257,20 @@ select.li option{background:#001428;}
   .pi{padding:18px 14px;}
 }
 </style>
+
+<!-- ═══ Firebase SDK ═══ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+/* Auth overlay hidden state — must override inline display:flex */
+#auth-overlay.hidden { display: none !important; }
+/* Signout menu */
+#signout-menu { display: none; }
+#signout-menu.open { display: block !important; }
+/* User badge hidden by default */
+#user-badge { display: none; }
+</style>
 </head>
 <body>
 <nav>
